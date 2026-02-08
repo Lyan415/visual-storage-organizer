@@ -1,73 +1,69 @@
-# React + TypeScript + Vite
+# Visual Storage Organizer (視覺化物品收納助手)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A mobile-first web application designed to help you organize your physical items using a visual, hierarchical approach. Treat your photos as folders and never lose track of your stuff again.
 
-Currently, two official plugins are available:
+![App Screenshot](./public/vite.svg) 
+*(Note: Replace this with actual screenshots of your app)*
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🚀 Key Features (系統特色)
 
-## React Compiler
+- **📸 Photo-First Interface**: 
+  - Visual navigation using images instead of just text.
+  - "Take Photo" simulation for adding new items.
+- **📂 Deep Hierarchy (無限層級)**: 
+  - Nest items as deep as you need: `Home` > `Living Room` > `TV Stand` > `Top Drawer` > `Batteries`.
+- **🔍 Fast Search (快速搜尋)**: 
+  - Instantly find items by name or notes.
+  - Clickable search results that take you directly to the item.
+- **📍 Smart Navigation (智慧路徑)**: 
+  - Breadcrumb navigation showing exactly where an item is located.
+  - Click any part of the path (e.g., `Root > Bedroom > Closet`) to jump there immediately.
+- **📱 Mobile Optimized (行動優先)**: 
+  - Designed for touch w/ large targets.
+  - Bottom navigation bar for easy thumb access.
+  - Clean, modern aesthetic powered by Tailwind CSS.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 🛠 Tech Stack (技術棧)
 
-## Expanding the ESLint configuration
+- **Framework**: [React](https://react.dev/) + [Vite](https://vitejs.dev/)
+- **Language**: [TypeScript](https://www.typescriptlang.org/)
+- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/)
+- **State Management**: [Zustand](https://github.com/pmndrs/zustand)
+- **Icons**: [Lucide React](https://lucide.dev/)
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## 🏃‍♂️ Getting Started (如何開始)
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+1.  **Clone the repository**
+    ```bash
+    git clone https://github.com/YOUR_USERNAME/visual-storage-organizer.git
+    cd visual-storage-organizer
+    ```
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+2.  **Install dependencies**
+    ```bash
+    npm install
+    ```
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+3.  **Run the development server**
+    ```bash
+    npm run dev
+    ```
+
+4.  **Open in Browser**
+    Visit `http://localhost:5173` (or the port shown in your terminal).
+
+## 📱 Use on Mobile (手機測試)
+
+To test on your mobile device on the same network:
+```bash
+npm run dev -- --host
 ```
+Then visit the Network IP address shown (e.g., `http://192.168.1.x:5173`).
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 🤝 Contributing
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Feel free to open issues or submit pull requests if you have ideas for improvements!
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## 📄 License
+
+MIT
