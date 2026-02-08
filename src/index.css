@@ -1,0 +1,18 @@
+@import "tailwindcss";
+
+/* Mobile-friendly touch targets */
+button,
+a {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+/* Hide scrollbar for clean UI but keep functionality */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
