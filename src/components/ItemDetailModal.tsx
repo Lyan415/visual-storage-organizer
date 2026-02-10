@@ -52,7 +52,7 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ item, onClose 
                     {/* Hero Image */}
                     <div className="h-64 w-full bg-gray-100">
                         <img
-                            src={item.imageUrl}
+                            src={item.imageUrl || ''}
                             alt={item.name}
                             className="h-full w-full object-cover"
                         />

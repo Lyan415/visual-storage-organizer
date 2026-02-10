@@ -1,6 +1,6 @@
 
 import { create } from 'zustand';
-import type { Item, ViewMode, Project, UserProfile } from '../types';
+import type { Item, ViewMode, Project } from '../types';
 import { supabase } from '../lib/supabase';
 import type { User } from '@supabase/supabase-js';
 
