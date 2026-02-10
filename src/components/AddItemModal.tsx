@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Upload, Camera } from 'lucide-react';
 import { useStore } from '../store/useStore';
-import type { Item } from '../types';
+// import type { Item } from '../types';
 
 interface AddItemModalProps {
     isOpen: boolean;
