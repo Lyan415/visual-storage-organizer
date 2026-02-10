@@ -1,30 +1,245 @@
+
 import { create } from 'zustand';
-import type { Item, ViewMode } from '../types';
-import { mockItems } from '../data/mockData';
+import type { Item, ViewMode, Project, UserProfile } from '../types';
+import { supabase } from '../lib/supabase';
+import type { User } from '@supabase/supabase-js';
 
 interface StoreState {
+    user: User | null;
+    projects: Project[];
     items: Item[];
-    viewMode: ViewMode;
+    currentProjectId: string | null;
     currentFolderId: string | null;
-    history: (string | null)[]; // For back navigation
+    viewMode: ViewMode;
+    history: (string | null)[];
+    isLoading: boolean;
 
+    // Actions
+    setUser: (user: User | null) => void;
+
+    // Project Actions
+    fetchProjects: () => Promise<void>;
+    createProject: (name: string) => Promise<void>;
+    setCurrentProject: (projectId: string | null) => void;
+
+    // Item Actions
+    fetchItems: (projectId: string) => Promise<void>;
+    addItem: (item: Omit<Item, 'id' | 'createdAt'>) => Promise<void>;
+    deleteItem: (itemId: string) => Promise<void>;
+    moveItem: (itemId: string, newParentId: string | null) => Promise<void>;
+
+    // Navigation
     setViewMode: (mode: ViewMode) => void;
     navigateToFolder: (folderId: string | null) => void;
     navigateBack: () => void;
-    addItem: (item: Item) => void;
-    deleteItem: (itemId: string) => void;
-    moveItem: (itemId: string, newParentId: string | null) => void;
+
+    // Selectors (internal usage mostly, but exposed if needed)
     getItemsInFolder: (folderId: string | null) => Item[];
     getParent: (itemId: string) => Item | undefined;
     getItem: (itemId: string) => Item | undefined;
-    getPath: (itemId: string) => Item[]; // Returns path from root to item
+    getPath: (itemId: string) => Item[];
 }
 
 export const useStore = create<StoreState>((set, get) => ({
-    items: mockItems,
-    viewMode: 'hierarchy',
+    user: null,
+    projects: [],
+    items: [],
+    currentProjectId: null,
     currentFolderId: null,
+    viewMode: 'hierarchy',
     history: [],
+    isLoading: false,
+
+    setUser: (user) => set({ user }),
+
+    fetchProjects: async () => {
+        set({ isLoading: true });
+        const { data, error } = await supabase
+            .from('projects')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('Error fetching projects:', error);
+        } else {
+            // Map Supabase specific fields to camelCase if needed, or keep snake_case
+            // For now assuming we adjust types or mapping
+            const mappedProjects: Project[] = (data || []).map((p: any) => ({
+                id: p.id,
+                name: p.name,
+                ownerId: p.owner_id,
+                createdAt: p.created_at
+            }));
+            set({ projects: mappedProjects });
+        }
+        set({ isLoading: false });
+    },
+
+    createProject: async (name) => {
+        const user = get().user;
+        if (!user) return;
+
+        const { data, error } = await supabase
+            .from('projects')
+            .insert({ name, owner_id: user.id })
+            .select() // Need to select to get ID
+            .single();
+
+        if (error) {
+            console.error('Error creating project:', error);
+        } else if (data) {
+            const newProject: Project = {
+                id: data.id,
+                name: data.name,
+                ownerId: data.owner_id,
+                createdAt: data.created_at
+            };
+            set((state) => ({ projects: [newProject, ...state.projects] }));
+        }
+    },
+
+    setCurrentProject: (projectId) => {
+        set({ currentProjectId: projectId, currentFolderId: null, history: [], items: [] });
+        if (projectId) {
+            get().fetchItems(projectId);
+        }
+    },
+
+    fetchItems: async (projectId) => {
+        set({ isLoading: true });
+        const { data, error } = await supabase
+            .from('items')
+            .select('*')
+            .eq('project_id', projectId);
+
+        if (error) {
+            console.error('Error fetching items:', error);
+        } else {
+            const mappedItems: Item[] = (data || []).map((i: any) => ({
+                id: i.id,
+                name: i.name,
+                imageUrl: i.image_url,
+                note: i.note,
+                parentId: i.parent_id,
+                projectId: i.project_id,
+                createdAt: i.created_at
+            }));
+            set({ items: mappedItems });
+        }
+        set({ isLoading: false });
+    },
+
+    addItem: async (itemPayload) => {
+        const projectId = get().currentProjectId;
+        if (!projectId) return;
+
+        // Optimistic Update
+        const tempId = crypto.randomUUID();
+        const optimisticItem: Item = {
+            ...itemPayload,
+            id: tempId,
+            projectId,
+            createdAt: new Date().toISOString()
+        };
+
+        set((state) => ({ items: [...state.items, optimisticItem] }));
+
+        // DB Call
+        const { data, error } = await supabase
+            .from('items')
+            .insert({
+                name: itemPayload.name,
+                image_url: itemPayload.imageUrl,
+                note: itemPayload.note,
+                parent_id: itemPayload.parentId,
+                project_id: projectId
+            })
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Error adding item:', error);
+            // Revert optimistic update
+            set((state) => ({ items: state.items.filter(i => i.id !== tempId) }));
+        } else if (data) {
+            // Replace optimistic item with real one
+            set((state) => ({
+                items: state.items.map(i => i.id === tempId ? {
+                    id: data.id,
+                    name: data.name,
+                    imageUrl: data.image_url,
+                    note: data.note,
+                    parentId: data.parent_id,
+                    projectId: data.project_id,
+                    createdAt: data.created_at
+                } : i)
+            }));
+        }
+    },
+
+    deleteItem: async (itemId) => {
+        const previousItems = get().items;
+
+        // Optimistic Delete (including descendants)
+        const getDescendants = (id: string, allItems: Item[]): string[] => {
+            const children = allItems.filter(i => i.parentId === id);
+            let descendants = children.map(c => c.id);
+            children.forEach(child => {
+                descendants = [...descendants, ...getDescendants(child.id, allItems)];
+            });
+            return descendants;
+        };
+
+        const descendants = getDescendants(itemId, previousItems);
+        const idsToDelete = [itemId, ...descendants];
+
+        // Check if we need to navigate up
+        let newCurrentFolderId = get().currentFolderId;
+        if (newCurrentFolderId && idsToDelete.includes(newCurrentFolderId)) {
+            newCurrentFolderId = null;
+        }
+
+        set((state) => ({
+            items: state.items.filter(i => !idsToDelete.includes(i.id)),
+            currentFolderId: newCurrentFolderId
+        }));
+
+        // DB Call
+        const { error } = await supabase
+            .from('items')
+            .delete()
+            .in('id', idsToDelete);
+
+        if (error) {
+            console.error('Error deleting item:', error);
+            set({ items: previousItems }); // Revert
+        }
+    },
+
+    moveItem: async (itemId, newParentId) => {
+        const previousItems = get().items;
+
+        // Validation
+        if (itemId === newParentId) return;
+
+        // Optimistic
+        set((state) => ({
+            items: state.items.map(item =>
+                item.id === itemId ? { ...item, parentId: newParentId } : item
+            )
+        }));
+
+        // DB Call
+        const { error } = await supabase
+            .from('items')
+            .update({ parent_id: newParentId })
+            .eq('id', itemId);
+
+        if (error) {
+            console.error('Error moving item:', error);
+            set({ items: previousItems });
+        }
+    },
 
     setViewMode: (mode) => set({ viewMode: mode }),
 
@@ -43,61 +258,6 @@ export const useStore = create<StoreState>((set, get) => ({
         };
     }),
 
-    addItem: (item) => set((state) => ({ items: [...state.items, item] })),
-
-    deleteItem: (itemId) => set((state) => {
-        // 1. Find all descendant IDs (recursive)
-        const getDescendants = (id: string, allItems: Item[]): string[] => {
-            const children = allItems.filter(i => i.parentId === id);
-            let descendants = children.map(c => c.id);
-            children.forEach(child => {
-                descendants = [...descendants, ...getDescendants(child.id, allItems)];
-            });
-            return descendants;
-        };
-
-        const descendants = getDescendants(itemId, state.items);
-        const idsToDelete = [itemId, ...descendants];
-
-        // 2. If currentFolderId is being deleted, move up
-        let newCurrentFolderId = state.currentFolderId;
-        if (newCurrentFolderId && idsToDelete.includes(newCurrentFolderId)) {
-            // Simply go to root for safety in this version
-            newCurrentFolderId = null;
-        }
-
-        return {
-            items: state.items.filter(i => !idsToDelete.includes(i.id)),
-            currentFolderId: newCurrentFolderId,
-        };
-    }),
-
-    moveItem: (itemId, newParentId) => set((state) => {
-        // Validation: Cannot move into itself or its descendants
-        if (itemId === newParentId) return {}; // No op
-
-        const getDescendants = (id: string, allItems: Item[]): string[] => {
-            const children = allItems.filter(i => i.parentId === id);
-            let descendants = children.map(c => c.id);
-            children.forEach(child => {
-                descendants = [...descendants, ...getDescendants(child.id, allItems)];
-            });
-            return descendants;
-        };
-
-        const descendants = getDescendants(itemId, state.items);
-        if (newParentId && descendants.includes(newParentId)) {
-            console.warn("Cannot move item into its own descendant");
-            return {};
-        }
-
-        return {
-            items: state.items.map(item =>
-                item.id === itemId ? { ...item, parentId: newParentId } : item
-            )
-        };
-    }),
-
     getItemsInFolder: (folderId) => {
         return get().items.filter(item => item.parentId === folderId);
     },
@@ -111,13 +271,9 @@ export const useStore = create<StoreState>((set, get) => ({
     getItem: (itemId) => get().items.find(i => i.id === itemId),
 
     getPath: (itemId) => {
-        // Traverse up to find path
         const path: Item[] = [];
         let current = get().items.find(i => i.id === itemId);
         while (current) {
-            // If we want the path to include the item itself, keep this.
-            // If we want strictly parents, modify logic.
-            // Requirement implies knowing "Location", so ancestors are key.
             if (current.parentId) {
                 const parent = get().items.find(i => i.id === current!.parentId);
                 if (parent) {
@@ -131,6 +287,5 @@ export const useStore = create<StoreState>((set, get) => ({
             }
         }
         return path;
-        // Alternative: Just return the breadcrumb list including root to immediate parent
     }
 }));

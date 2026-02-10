@@ -1,16 +1,37 @@
 
-import { MobileLayout } from './layouts/MobileLayout';
-import { HierarchyView } from './views/HierarchyView';
-import { FlatView } from './views/FlatView';
-import { useStore } from './store/useStore';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthGuard } from './components/auth/AuthGuard';
+import { LoginView } from './components/auth/LoginView';
+import { ProjectListView } from './views/ProjectListView';
+import { ProjectDetailView } from './views/ProjectDetailView';
 
 function App() {
-  const { viewMode } = useStore();
-
   return (
-    <MobileLayout>
-      {viewMode === 'hierarchy' ? <HierarchyView /> : <FlatView />}
-    </MobileLayout>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<LoginView />} />
+
+        <Route
+          path="/"
+          element={
+            <AuthGuard>
+              <ProjectListView />
+            </AuthGuard>
+          }
+        />
+
+        <Route
+          path="/project/:projectId"
+          element={
+            <AuthGuard>
+              <ProjectDetailView />
+            </AuthGuard>
+          }
+        />
+
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 

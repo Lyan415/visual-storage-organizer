@@ -11,7 +11,11 @@ export const FlatView: React.FC = () => {
     // In a real app, we might want to filter out 'root' containers if they are just rooms, 
     // but for "Photo Search" mode usually we want everything.
     // Let's sort by newest first
-    const sortedItems = [...items].sort((a, b) => b.createdAt - a.createdAt);
+    const sortedItems = [...items].sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+    });
 
     const handleItemClick = (item: Item) => {
         setSelectedItem(item);

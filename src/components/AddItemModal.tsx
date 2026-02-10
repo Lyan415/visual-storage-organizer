@@ -25,33 +25,38 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
         }
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!name.trim()) return;
 
         setIsSubmitting(true);
 
-        // Simulate network delay for upload
-        setTimeout(() => {
-            const newItem: Item = {
-                id: crypto.randomUUID(),
-                name: name,
+        // Auto-generate name if empty
+        const finalName = name.trim() || `Item ${new Date().toLocaleString('zh-TW', { hour12: false })}`;
+
+        try {
+            // In a real app, upload image to storage here and get URL
+            // For now using the preview or random placeholder
+            const imageUrl = previewUrl || `https://images.unsplash.com/photo-${['1618331835717-801e976710b2', '1586105251261-72a756497a11', '1589829085413-56de8ae18c73'][Math.floor(Math.random() * 3)]
+                }?auto=format&fit=crop&q=80&w=800`;
+
+            await addItem({
+                name: finalName,
                 note: note,
                 parentId: currentFolderId,
-                // Use the local preview URL if available, otherwise random unsplash
-                // In a real app, this would be the URL returned from the server after upload
-                imageUrl: previewUrl || `https://images.unsplash.com/photo-${['1618331835717-801e976710b2', '1586105251261-72a756497a11', '1589829085413-56de8ae18c73'][Math.floor(Math.random() * 3)]
-                    }?auto=format&fit=crop&q=80&w=800`,
-                createdAt: Date.now(),
-            };
+                imageUrl: imageUrl,
+                projectId: '',
+            });
 
-            addItem(newItem);
+        } catch (error) {
+            console.error(error);
+        } finally {
             setIsSubmitting(false);
             setName('');
             setNote('');
             setPreviewUrl(null);
             onClose();
-        }, 800);
+        }
     };
 
     return (
@@ -94,7 +99,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            placeholder="e.g. Red Box"
+                            placeholder="e.g. Red Box (Leave empty for auto-name)"
                             className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500"
                         // autoFocus removed for better mobile UX (keyboard pop)
                         />
@@ -113,7 +118,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
 
                     <button
                         type="submit"
-                        disabled={!name.trim() || isSubmitting}
+                        disabled={isSubmitting}
                         className="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 font-semibold text-white shadow-md active:scale-95 disabled:bg-gray-300 disabled:shadow-none"
                     >
                         {isSubmitting ? 'Uploading...' : (
