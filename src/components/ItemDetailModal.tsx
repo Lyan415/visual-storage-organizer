@@ -127,19 +127,21 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ item, onClose 
     return (
         <>
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-                <div className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
 
-                    {/* Close Button */}
-                    {/* Close Button - Always enable or visually indicate disabled but allow click if stuck */}
-                    <button
-                        onClick={() => {
-                            if (!isSubmitting) onClose();
-                        }}
-                        disabled={isSubmitting}
-                        className={`absolute right-4 top-4 z-50 rounded-full p-2 text-white backdrop-blur-md transition-colors ${isSubmitting ? 'bg-black/10 cursor-not-allowed' : 'bg-black/20 hover:bg-black/30'}`}
-                    >
-                        <X size={20} />
-                    </button>
+                {/* Close Button - Moved outside relative container to ensure it's on top of everything */}
+                <button
+                    onClick={() => {
+                        console.log('Close button clicked');
+                        if (!isSubmitting) onClose();
+                    }}
+                    disabled={isSubmitting}
+                    className={`absolute right-4 top-4 z-[60] rounded-full p-2 text-white/80 hover:text-white transition-colors ${isSubmitting ? 'cursor-not-allowed opacity-50' : 'hover:bg-white/10'}`}
+                    style={{ position: 'fixed', top: '16px', right: '16px' }} // Force fixed position on screen
+                >
+                    <X size={32} /> {/* Made bigger */}
+                </button>
+
+                <div className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
 
                     {/* Hero Image - Fixed Display */}
                     <div className="h-64 w-full bg-gray-100 flex-shrink-0 relative group overflow-hidden">
