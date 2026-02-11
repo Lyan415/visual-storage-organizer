@@ -38,8 +38,8 @@ export const ItemCard: React.FC<ItemCardProps> = ({
         >
             {/* Image / Thumbnail - Fixed to show full image */}
             <div className={twMerge(
-                "relative overflow-hidden bg-gray-50 flex items-center justify-center group",
-                variant === 'grid' ? "h-3/4 w-full" : "h-14 w-14 rounded-lg flex-shrink-0"
+                "relative overflow-hidden bg-gray-50 flex items-center justify-center group flex-grow w-full", // Changed h-3/4 to flex-grow
+                variant === 'grid' ? "" : "h-14 w-14 rounded-lg flex-shrink-0" // Removed h-3/4 specific constraint
             )}>
                 {item.imageUrl && !hasError ? (
                     <>
@@ -73,8 +73,8 @@ export const ItemCard: React.FC<ItemCardProps> = ({
 
             {/* Content */}
             <div className={twMerge(
-                "flex flex-col justify-center min-w-0 w-full",
-                variant === 'grid' ? "h-1/4 px-3 py-1" : "ml-3 flex-1"
+                "flex flex-col justify-center min-w-0 w-full bg-white relative z-30", // Added z-30
+                variant === 'grid' ? "h-auto py-2 px-3 shrink-0" : "ml-3 flex-1" // Changed h-1/4 to h-auto
             )}>
                 <h3 className="truncate text-sm font-medium text-gray-900 w-full">{item.name}</h3>
 
