@@ -87,7 +87,9 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ item, onClose 
     };
 
     const handleSave = async () => {
+        if (isSubmitting) return;
         setIsSubmitting(true);
+
         try {
             let imageUrl = item.imageUrl;
 
@@ -106,7 +108,14 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ item, onClose 
                 note: editNote,
                 imageUrl: imageUrl,
             });
+
+            // Success flow
             setIsEditing(false);
+
+            // Optional: Close modal on save for better UX, or just exit edit mode?
+            // User reported app freeze, simplest fix is to ensure we are in a clean state.
+            // Let's exit edit mode and ensure submitting is false.
+
         } catch (error) {
             console.error('Failed to update item:', error);
             alert('Failed to update item. Please try again.');
@@ -121,9 +130,13 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ item, onClose 
                 <div className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
 
                     {/* Close Button */}
+                    {/* Close Button - Always enable or visually indicate disabled but allow click if stuck */}
                     <button
-                        onClick={onClose}
-                        className="absolute right-4 top-4 z-10 rounded-full bg-black/20 p-2 text-white backdrop-blur-md hover:bg-black/30"
+                        onClick={() => {
+                            if (!isSubmitting) onClose();
+                        }}
+                        disabled={isSubmitting}
+                        className={`absolute right-4 top-4 z-50 rounded-full p-2 text-white backdrop-blur-md transition-colors ${isSubmitting ? 'bg-black/10 cursor-not-allowed' : 'bg-black/20 hover:bg-black/30'}`}
                     >
                         <X size={20} />
                     </button>
