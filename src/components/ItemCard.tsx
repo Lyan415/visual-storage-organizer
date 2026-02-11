@@ -36,27 +36,37 @@ export const ItemCard: React.FC<ItemCardProps> = ({
                 variant === 'grid' ? "aspect-square flex flex-col" : "flex items-center p-3 h-auto min-h-[5rem]"
             )}
         >
-            {/* Image / Thumbnail */}
+            {/* Image / Thumbnail - Fixed to show full image */}
             <div className={twMerge(
-                "relative overflow-hidden bg-gray-50 flex items-center justify-center",
+                "relative overflow-hidden bg-gray-50 flex items-center justify-center group",
                 variant === 'grid' ? "h-3/4 w-full" : "h-14 w-14 rounded-lg flex-shrink-0"
             )}>
                 {item.imageUrl && !hasError ? (
-                    <img
-                        src={item.imageUrl}
-                        alt={item.name}
-                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        loading="lazy"
-                        onError={() => setHasError(true)}
-                    />
+                    <>
+                        {/* Blurred Background */}
+                        <img
+                            src={item.imageUrl}
+                            alt=""
+                            className="absolute inset-0 w-full h-full object-cover opacity-30 blur-sm scale-110"
+                            loading="lazy"
+                        />
+                        {/* Main Image - Contain */}
+                        <img
+                            src={item.imageUrl}
+                            alt={item.name}
+                            className="relative h-full w-full object-contain z-10 transition-transform duration-300 group-hover:scale-105"
+                            loading="lazy"
+                            onError={() => setHasError(true)}
+                        />
+                    </>
                 ) : (
-                    <div className="flex h-full w-full items-center justify-center text-gray-300">
+                    <div className="flex h-full w-full items-center justify-center text-gray-300 relative z-10">
                         <ImageIcon size={variant === 'grid' ? 32 : 24} />
                     </div>
                 )}
 
                 {/* Type Indicator Overlay */}
-                <div className="absolute top-2 right-2 rounded-full bg-black/50 p-1 text-white backdrop-blur-sm">
+                <div className="absolute top-2 right-2 z-20 rounded-full bg-black/50 p-1 text-white backdrop-blur-sm">
                     <Folder size={12} />
                 </div>
             </div>
