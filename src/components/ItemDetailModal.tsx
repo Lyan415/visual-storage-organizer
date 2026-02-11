@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, MapPin, Trash2, Move, ChevronRight, Home, Edit2 } from 'lucide-react';
 import type { Item } from '../types';
 import { useStore } from '../store/useStore';
+import { supabase } from '../lib/supabase';
 import { FolderPicker } from './FolderPicker';
 
 interface ItemDetailModalProps {
@@ -59,14 +60,45 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ item, onClose 
         }
     };
 
+    const uploadImage = async (file: File) => {
+        try {
+            const user = useStore.getState().user;
+            if (!user) throw new Error('User not authenticated');
+
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+            const filePath = `${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('item-images')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data } = supabase.storage
+                .from('item-images')
+                .getPublicUrl(filePath);
+
+            return data.publicUrl;
+        } catch (error) {
+            console.error('Error uploading image:', error);
+            throw error;
+        }
+    };
+
     const handleSave = async () => {
         setIsSubmitting(true);
         try {
-            // Mock upload logic same as AddItemModal
             let imageUrl = item.imageUrl;
-            if (previewUrl) {
-                imageUrl = previewUrl || `https://images.unsplash.com/photo-${['1618331835717-801e976710b2', '1586105251261-72a756497a11', '1589829085413-56de8ae18c73'][Math.floor(Math.random() * 3)]
-                    }?auto=format&fit=crop&q=80&w=800`;
+
+            // Check for file selection
+            const fileInput = document.getElementById('edit-item-file-input') as HTMLInputElement;
+
+            if (fileInput?.files?.[0]) {
+                imageUrl = await uploadImage(fileInput.files[0]);
+            } else if (previewUrl && !previewUrl.startsWith('blob:')) {
+                // If previewUrl is a real URL (not blob), use it
+                imageUrl = previewUrl;
             }
 
             await updateItem(item.id, {
@@ -77,6 +109,7 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ item, onClose 
             setIsEditing(false);
         } catch (error) {
             console.error('Failed to update item:', error);
+            alert('Failed to update item. Please try again.');
         } finally {
             setIsSubmitting(false);
         }
@@ -95,19 +128,28 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ item, onClose 
                         <X size={20} />
                     </button>
 
-                    {/* Hero Image */}
-                    <div className="h-64 w-full bg-gray-100 flex-shrink-0 relative group">
+                    {/* Hero Image - Fixed Display */}
+                    <div className="h-64 w-full bg-gray-100 flex-shrink-0 relative group overflow-hidden">
+                        {/* Blurred Background */}
+                        <img
+                            src={previewUrl || item.imageUrl || ''}
+                            alt=""
+                            className="absolute inset-0 w-full h-full object-cover opacity-30 blur-xl scale-110"
+                        />
+                        {/* Main Image - Contain */}
                         <img
                             src={previewUrl || item.imageUrl || ''}
                             alt={item.name}
-                            className="h-full w-full object-cover"
+                            className="relative h-full w-full object-contain z-10"
                         />
+
                         {isEditing && (
-                            <label className="absolute inset-0 flex items-center justify-center bg-black/40 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
+                            <label className="absolute inset-0 z-20 flex items-center justify-center bg-black/40 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
                                 <span className="bg-white/90 text-black px-4 py-2 rounded-full text-sm font-medium">
                                     Change Photo
                                 </span>
                                 <input
+                                    id="edit-item-file-input"
                                     type="file"
                                     accept="image/*"
                                     className="hidden"

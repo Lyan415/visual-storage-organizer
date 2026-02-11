@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Upload, Camera } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { supabase } from '../lib/supabase';
 // import type { Item } from '../types';
 
 interface AddItemModalProps {
@@ -26,19 +27,54 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
     };
 
 
+    const uploadImage = async (file: File) => {
+        try {
+            const user = useStore.getState().user;
+            if (!user) throw new Error('User not authenticated');
+
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+            const filePath = `${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('item-images')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data } = supabase.storage
+                .from('item-images')
+                .getPublicUrl(filePath);
+
+            return data.publicUrl;
+        } catch (error) {
+            console.error('Error uploading image:', error);
+            throw error;
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         setIsSubmitting(true);
 
-        // Auto-generate name if empty
         const finalName = name.trim() || `Item ${new Date().toLocaleString('zh-TW', { hour12: false })}`;
 
         try {
-            // In a real app, upload image to storage here and get URL
-            // For now using the preview or random placeholder
-            const imageUrl = previewUrl || `https://images.unsplash.com/photo-${['1618331835717-801e976710b2', '1586105251261-72a756497a11', '1589829085413-56de8ae18c73'][Math.floor(Math.random() * 3)]
-                }?auto=format&fit=crop&q=80&w=800`;
+            let imageUrl = '';
+
+            // If there is a file selected (we need to track the file, not just the preview URL)
+            // Need to update state to store the File object
+            const fileInput = document.getElementById('add-item-file-input') as HTMLInputElement;
+            if (fileInput?.files?.[0]) {
+                imageUrl = await uploadImage(fileInput.files[0]);
+            } else if (previewUrl) {
+                // If previewUrl exists but no file (shouldn't happen in add mode unless we preset stuff), keep it or use placeholder
+                imageUrl = previewUrl;
+            } else {
+                imageUrl = `https://images.unsplash.com/photo-${['1618331835717-801e976710b2', '1586105251261-72a756497a11', '1589829085413-56de8ae18c73'][Math.floor(Math.random() * 3)]
+                    }?auto=format&fit=crop&q=80&w=800`;
+            }
 
             await addItem({
                 name: finalName,
@@ -50,6 +86,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
 
         } catch (error) {
             console.error(error);
+            alert('Error adding item. Please try again.');
         } finally {
             setIsSubmitting(false);
             setName('');
@@ -85,6 +122,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
                             </div>
                         )}
                         <input
+                            id="add-item-file-input"
                             type="file"
                             accept="image/*"
                             capture="environment" // Favors rear camera on mobile
