@@ -27,6 +27,7 @@ interface StoreState {
     addItem: (item: Omit<Item, 'id' | 'createdAt'>) => Promise<void>;
     deleteItem: (itemId: string) => Promise<void>;
     moveItem: (itemId: string, newParentId: string | null) => Promise<void>;
+    updateItem: (itemId: string, updates: Partial<Omit<Item, 'id' | 'createdAt' | 'projectId'>>) => Promise<void>;
 
     // Navigation
     setViewMode: (mode: ViewMode) => void;
@@ -237,6 +238,35 @@ export const useStore = create<StoreState>((set, get) => ({
 
         if (error) {
             console.error('Error moving item:', error);
+            set({ items: previousItems });
+        }
+    },
+
+    updateItem: async (itemId, updates) => {
+        const previousItems = get().items;
+
+        // Optimistic Update
+        set((state) => ({
+            items: state.items.map(item =>
+                item.id === itemId ? { ...item, ...updates } : item
+            )
+        }));
+
+        // DB Call
+        // Map camelCase to snake_case for DB
+        const dbUpdates: any = {};
+        if (updates.name !== undefined) dbUpdates.name = updates.name;
+        if (updates.imageUrl !== undefined) dbUpdates.image_url = updates.imageUrl;
+        if (updates.note !== undefined) dbUpdates.note = updates.note;
+        if (updates.parentId !== undefined) dbUpdates.parent_id = updates.parentId; // unexpected but possible
+
+        const { error } = await supabase
+            .from('items')
+            .update(dbUpdates)
+            .eq('id', itemId);
+
+        if (error) {
+            console.error('Error updating item:', error);
             set({ items: previousItems });
         }
     },

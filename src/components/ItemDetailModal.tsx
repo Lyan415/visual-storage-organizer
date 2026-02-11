@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, MapPin, Trash2, Move, ChevronRight, Home } from 'lucide-react';
+import { X, MapPin, Trash2, Move, ChevronRight, Home, Edit2 } from 'lucide-react';
 import type { Item } from '../types';
 import { useStore } from '../store/useStore';
 import { FolderPicker } from './FolderPicker';
@@ -10,8 +10,23 @@ interface ItemDetailModalProps {
 }
 
 export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ item, onClose }) => {
-    const { getPath, navigateToFolder, setViewMode, deleteItem, moveItem } = useStore();
+    const { getPath, navigateToFolder, setViewMode, deleteItem, moveItem, updateItem } = useStore();
     const [isMovePickerOpen, setIsMovePickerOpen] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editName, setEditName] = useState('');
+    const [editNote, setEditNote] = useState('');
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Reset state when item changes or modal opens
+    React.useEffect(() => {
+        if (item) {
+            setEditName(item.name);
+            setEditNote(item.note || '');
+            setPreviewUrl(null);
+            setIsEditing(false);
+        }
+    }, [item]);
 
     if (!item) return null;
 
@@ -36,10 +51,41 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ item, onClose 
         onClose();
     };
 
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            const url = URL.createObjectURL(file);
+            setPreviewUrl(url);
+        }
+    };
+
+    const handleSave = async () => {
+        setIsSubmitting(true);
+        try {
+            // Mock upload logic same as AddItemModal
+            let imageUrl = item.imageUrl;
+            if (previewUrl) {
+                imageUrl = previewUrl || `https://images.unsplash.com/photo-${['1618331835717-801e976710b2', '1586105251261-72a756497a11', '1589829085413-56de8ae18c73'][Math.floor(Math.random() * 3)]
+                    }?auto=format&fit=crop&q=80&w=800`;
+            }
+
+            await updateItem(item.id, {
+                name: editName,
+                note: editNote,
+                imageUrl: imageUrl,
+            });
+            setIsEditing(false);
+        } catch (error) {
+            console.error('Failed to update item:', error);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     return (
         <>
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-                <div className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl animate-in zoom-in-95 duration-200">
+                <div className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
 
                     {/* Close Button */}
                     <button
@@ -50,73 +96,144 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ item, onClose 
                     </button>
 
                     {/* Hero Image */}
-                    <div className="h-64 w-full bg-gray-100">
+                    <div className="h-64 w-full bg-gray-100 flex-shrink-0 relative group">
                         <img
-                            src={item.imageUrl || ''}
+                            src={previewUrl || item.imageUrl || ''}
                             alt={item.name}
                             className="h-full w-full object-cover"
                         />
+                        {isEditing && (
+                            <label className="absolute inset-0 flex items-center justify-center bg-black/40 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span className="bg-white/90 text-black px-4 py-2 rounded-full text-sm font-medium">
+                                    Change Photo
+                                </span>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={handleFileChange}
+                                />
+                            </label>
+                        )}
                     </div>
 
                     {/* Content */}
-                    <div className="p-6">
-                        <div className="flex items-start justify-between">
-                            <h2 className="text-2xl font-bold text-gray-900">{item.name}</h2>
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => setIsMovePickerOpen(true)}
-                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
-                                    title="Move Item"
-                                >
-                                    <Move size={20} />
-                                </button>
-                                <button
-                                    onClick={handleDelete}
-                                    className="p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors"
-                                    title="Delete Item"
-                                >
-                                    <Trash2 size={20} />
-                                </button>
-                            </div>
+                    <div className="p-6 overflow-y-auto">
+                        <div className="flex items-start justify-between mb-4">
+                            {isEditing ? (
+                                <div className="w-full mr-4">
+                                    <label className="text-xs text-gray-500 font-medium ml-1">Name</label>
+                                    <input
+                                        type="text"
+                                        value={editName}
+                                        onChange={(e) => setEditName(e.target.value)}
+                                        className="w-full text-2xl font-bold text-gray-900 border-b-2 border-blue-500 focus:outline-none bg-transparent px-1"
+                                        placeholder="Item Name"
+                                    />
+                                </div>
+                            ) : (
+                                <h2 className="text-2xl font-bold text-gray-900 break-words">{item.name}</h2>
+                            )}
+
+                            {!isEditing && (
+                                <div className="flex gap-2 flex-shrink-0">
+                                    <button
+                                        onClick={() => setIsEditing(true)}
+                                        className="p-2 text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                                        title="Edit Item"
+                                    >
+                                        <Edit2 size={20} />
+                                    </button>
+                                    <button
+                                        onClick={() => setIsMovePickerOpen(true)}
+                                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                                        title="Move Item"
+                                    >
+                                        <Move size={20} />
+                                    </button>
+                                    <button
+                                        onClick={handleDelete}
+                                        className="p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                                        title="Delete Item"
+                                    >
+                                        <Trash2 size={20} />
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
-                        {item.note && (
-                            <p className="mt-2 text-gray-600">{item.note}</p>
+                        {isEditing ? (
+                            <div className="mt-2">
+                                <label className="text-xs text-gray-500 font-medium ml-1">Note</label>
+                                <textarea
+                                    value={editNote}
+                                    onChange={(e) => setEditNote(e.target.value)}
+                                    className="w-full mt-1 p-3 rounded-lg border border-gray-200 text-gray-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                                    rows={3}
+                                    placeholder="Add notes..."
+                                />
+                            </div>
+                        ) : (
+                            item.note && (
+                                <p className="mt-2 text-gray-600 whitespace-pre-wrap">{item.note}</p>
+                            )
                         )}
 
-                        <div className="mt-6 space-y-4">
-                            {/* Location Context */}
-                            <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
-                                <div className="mb-3 flex items-center gap-2 text-sm font-medium text-blue-700">
-                                    <MapPin size={16} />
-                                    Location:
-                                </div>
+                        {!isEditing && (
+                            <div className="mt-6 space-y-4">
+                                {/* Location Context */}
+                                <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
+                                    <div className="mb-3 flex items-center gap-2 text-sm font-medium text-blue-700">
+                                        <MapPin size={16} />
+                                        Location:
+                                    </div>
 
-                                <div className="flex flex-wrap items-center gap-1 text-sm text-gray-600">
-                                    {/* Root Link */}
-                                    <button
-                                        onClick={() => handleNavigateToFolder(null)}
-                                        className="flex items-center text-blue-600 font-medium px-2 py-1 rounded hover:bg-blue-50 hover:underline active:bg-blue-100 transition-colors"
-                                    >
-                                        <Home size={14} className="mr-1" />
-                                        Root
-                                    </button>
+                                    <div className="flex flex-wrap items-center gap-1 text-sm text-gray-600">
+                                        {/* Root Link */}
+                                        <button
+                                            onClick={() => handleNavigateToFolder(null)}
+                                            className="flex items-center text-blue-600 font-medium px-2 py-1 rounded hover:bg-blue-50 hover:underline active:bg-blue-100 transition-colors"
+                                        >
+                                            <Home size={14} className="mr-1" />
+                                            Root
+                                        </button>
 
-                                    {/* Path Segments */}
-                                    {path.map((pathItem) => (
-                                        <React.Fragment key={pathItem.id}>
-                                            <ChevronRight size={14} className="text-gray-400" />
-                                            <button
-                                                onClick={() => handleNavigateToFolder(pathItem.id)}
-                                                className="text-blue-600 font-medium px-2 py-1 rounded truncate max-w-[100px] hover:bg-blue-50 hover:underline active:bg-blue-100 transition-colors"
-                                            >
-                                                {pathItem.name}
-                                            </button>
-                                        </React.Fragment>
-                                    ))}
+                                        {/* Path Segments */}
+                                        {path.map((pathItem) => (
+                                            <React.Fragment key={pathItem.id}>
+                                                <ChevronRight size={14} className="text-gray-400" />
+                                                <button
+                                                    onClick={() => handleNavigateToFolder(pathItem.id)}
+                                                    className="text-blue-600 font-medium px-2 py-1 rounded truncate max-w-[100px] hover:bg-blue-50 hover:underline active:bg-blue-100 transition-colors"
+                                                >
+                                                    {pathItem.name}
+                                                </button>
+                                            </React.Fragment>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
+
+                        {/* Edit Actions */}
+                        {isEditing && (
+                            <div className="mt-8 flex gap-3">
+                                <button
+                                    onClick={() => setIsEditing(false)}
+                                    className="flex-1 py-3 px-4 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                                    disabled={isSubmitting}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleSave}
+                                    disabled={isSubmitting}
+                                    className="flex-1 py-3 px-4 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 shadow-sm active:scale-95 transition-all"
+                                >
+                                    {isSubmitting ? 'Saving...' : 'Save Changes'}
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
